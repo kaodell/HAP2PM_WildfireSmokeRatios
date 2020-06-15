@@ -16,8 +16,8 @@
 # updated TOGA formaldehyde values.
 
 # Details on each code:
-# find_anthropogenic_tracers_NASAmrg.py - input TOGA species to use as anthropogenic tracers, identify and flag anthropogeic-influenced   # observations
-# VOC-PM_TOGA_sensitivity_tests_NASAmrg.py - input CO, HCN, and CH3CN limits to use as smoke cut-offs, calculate chemical smoke age,      # identify smoke and smoke-free observtions, calcualte non-smoke backgrounds of HAPs, place PTR data on TOGA timescale
+# find_anthropogenic_tracers_NASAmrg.py - input TOGA species to use as anthropogenic tracers, identify and flag anthropogeic-influenced observations
+# VOC-PM_TOGA_sensitivity_tests_NASAmrg.py - input CO, HCN, and CH3CN limits to use as smoke cut-offs, calculate chemical smoke age,       identify smoke and smoke-free observtions, calcualte non-smoke backgrounds of HAPs, place PTR data on TOGA timescale
 # WE-CAN_paper_figures_final_NASAmrg.py - calculate HAP/PM ratios, HAPs-PM weighted risk, and create figures 1-3 from the paper
 # VOC2PM_output4paper.py - calcualte HAP/PM ratios for each age category and create supplementary csv file from paper
 # PM_and_VOC_maps4paper.py - calculate chronic HAPs exposure and risk and create figure 4 from paper
@@ -26,7 +26,7 @@
 # 1) download TOGA merge from WE-CAN site and special PTR data from:
 # 2) download table from paper appendix of HAPs names, molecular weights, reference concentrations, and unit risk estimates
 # 2) run find_anthropogenic_tracers_NASAmrg.py to find and flag data with urban influence
-# 3) run VOC-PM_TOGA_sensitivity_tests_NASAmrg.py to identify smoke-influenced points, calculate non-smoke mixing ratios, calculate       # chemical smoke age and place PTR variables on TOGA timescale
+# 3) run VOC-PM_TOGA_sensitivity_tests_NASAmrg.py to identify smoke-influenced points, calculate non-smoke mixing ratios, calculate       chemical smoke age and place PTR variables on TOGA timescale
 # 4) run WE-CAN_paper_figures_final_NASAmrg.py to weight HAPs by PM and risk and create figures 1-3 in the paper
 # 5) run VOC2PM_output4paper.py to calculte HAP/PM ratios from paper supplentary files
 # 6) download kriged PM2.5 from Colorado State University Repositories, DOI(s): xxxxxx
