@@ -226,15 +226,17 @@ fig.write_image(fig_path+fig_desc+ '_VOC_elv_boxplot_hazardv2.png',width=900,hei
 VOC_PM_weighted = VOC_smoke_elv_nourban[VOC_smoke_elv_nourban.columns[:5]].copy(deep=True)
 VOC_CO_weighted = VOC_smoke_elv_nourban[VOC_smoke_elv_nourban.columns[:5]].copy(deep=True)
 zeroPM = np.where(VOC_smoke_elv_nourban['PM_elv']==0)
+PM_nans = np.where(np.isnan(VOC_smoke_elv_nourban['PM_elv'])) # we will use this in the loop
+
 for voc in VOC_smoke_elv_nourban.columns[5:-1]:
     VOC_PM_weighted[voc] = VOC_smoke_elv_nourban[voc].values/VOC_smoke_elv_nourban['PM_elv'].values
-    # this was changed to zeros up until 01.22.20, but now is nans. zeros doesn't make sense
+    # divide by zero gives inf, replace with nans
     VOC_PM_weighted[voc].iloc[zeroPM] = np.nan
 
     VOC_CO_weighted[voc] = VOC_smoke_elv_nourban[voc].values/VOC_smoke_elv_nourban['CO_comb_elv'].values
     # make CO nans here to so we are comparing the same data
-    # CO_elv is never 0, because the background CO calculation (~70 ppb) is less 
-    # than the minimum required for smoke events (85 ppb)
+    # CO_elv is never 0 in smoke, because the background CO calculation (~70 ppb) is less 
+    # than the minimum required for smoke events (85 ppb), so it doesn't make a difference to replace CO infs
     VOC_CO_weighted[voc].iloc[zeroPM] = np.nan
 
 VOC_PM_weighted['chem_smoke_age'] = VOC_smoke_elv_nourban['chem_smoke_age'].copy(deep=True)
@@ -242,12 +244,13 @@ VOC_CO_weighted['chem_smoke_age'] = VOC_smoke_elv_nourban['chem_smoke_age'].copy
 
 # make figure and calc medians of PM- and CO- weighted VOCs for each age category
 legend_bool = [False,False,True] # to only plot legend on final age group so it isn't repeated
-weight = ['PM','CO']
 f = 0 #indicate which figure is being plotted
 for VOC_weighted in [VOC_PM_weighted,VOC_CO_weighted]:
     row = 1
+    
+    # create figure 
     fig = plotly.subplots.make_subplots(rows=3, cols=1,
-            subplot_titles = ['(a) Acute','(b) Chronic Noncancer','(c) Cancer'])
+    subplot_titles = ['(a) Acute','(b) Chronic Noncancer','(c) Cancer'])
 
     for risk in ['arl_ppt','crl_ppt','crf_ppt']:
         VOCs_w_risk = []
@@ -274,13 +277,12 @@ for VOC_weighted in [VOC_PM_weighted,VOC_CO_weighted]:
                 continue
             other_med_risk = np.vstack([other_med_risk,
                                               age_groups.median()[' '+VOC_name + '_elv'][age_names[1:]].values])
-    
         other_med_risk_tot = np.nansum(other_med_risk,axis=0)
+        total_risk_methodA+= other_med_risk_tot
+
         fig.add_trace(go.Bar(x=age_names_fig[1:],y=other_med_risk_tot,name='other',
                              legendgroup='other',showlegend=legend_bool[row-1],
                              marker_color='#7F8C8D'),row=row,col=1)
-
-        total_risk_methodA+= other_med_risk_tot
         # add VOCs with color
         for VOC_name in VOCs_w_color:
                 # calculate median for VOCs with color
@@ -293,44 +295,43 @@ for VOC_weighted in [VOC_PM_weighted,VOC_CO_weighted]:
                          marker_color=fig_names['color'][' '+VOC_name]),row=row,col=1)
                 total_risk_methodA += np.where(np.isnan(med_risk),0,med_risk)
             
-        # add bars
-        # calculate 25th and 75th percentile for 'error' bars
+        # add 'error' bars
         med_tot_risk = []
         lower_q_tot_risk = []
         upper_q_tot_risk = []
 
-        # sum for total risk
+        # sum for total risk of individual points
         total_risk = np.nansum(VOC_risk_weighted.iloc[:,5:-1].values,axis=1)
         # make places where PM_elv is nans or zeros nans, in the sum they turn into zeros
-        # PM_elv is only negative 3 times during the smoke points (twice in young, once in old)
-        PM_nans = np.where(np.isnan(VOC_smoke_elv_nourban['PM_elv']))
-        PM_zeros = np.where(VOC_smoke_elv_nourban['PM_elv']==0)
+        # PM_elv is only zero 3 times during the smoke points (twice in young, once in old)
         total_risk[PM_nans] = np.nan
-        total_risk[PM_zeros] = np.nan
-        # also remove places where all the VOCs with risk are nans, these will
-        # be counted as zeros in the sum, but shouldn't be
+        total_risk[zeroPM] = np.nan
+        # also remove places where any of the VOCs with risk are nans, these will
+        # be counted as zeros in the sum, but shouldn't be and will bias risk estiamte low
         rmv_inds = []
         for i in range(VOC_risk_weighted.shape[0]):
             if np.any(np.isnan(VOC_risk_weighted[VOCs_w_risk].iloc[i])):
                 rmv_inds = np.append(rmv_inds,i)
         rmv_inds = np.array(rmv_inds,dtype=int)
         total_risk[rmv_inds] = np.nan
-     
+
+        # calculate 25th and 75th percentile for 'error' bars
         for age_name in age_names[1:]:
             age_inds = np.where(VOC_risk_weighted['chem_smoke_age']==age_name)
             total_risk_age = total_risk[age_inds]
+            # print 'total risk length', age_name, len(np.where(np.isfinite(total_risk_age))[0])
             med_tot_risk = np.append(med_tot_risk,np.nanmedian(total_risk_age))
             lower_q_tot_risk = np.append(lower_q_tot_risk,np.nanpercentile(total_risk_age,25,interpolation='linear'))
             upper_q_tot_risk = np.append(upper_q_tot_risk,np.nanpercentile(total_risk_age,75,interpolation='linear'))
         print 'methodA, sum indv. med\n',total_risk_methodA, 'methodB, total med\n', med_tot_risk
-        # plot the risk based on total_med risk in method B, this way
+        # plot the risk based on total_med risk in method A, this way
         # what is plotted is the 25th-75th percentile of the total risk, when it
         # can be estimated for individual points (all species w/ risk have data)
         fig.add_trace(go.Bar(x=age_names_fig[1:], y=[0,0,0],
              name='total_med',showlegend=False,
              error_y=dict(type='data', symmetric=False,
-                           array=upper_q_tot_risk-med_tot_risk,
-                           arrayminus=med_tot_risk-lower_q_tot_risk)),row=row,col=1)
+                           array=upper_q_tot_risk-total_risk_methodA,
+                           arrayminus=total_risk_methodA-lower_q_tot_risk)),row=row,col=1)
         row += 1                     
     # clean up figure and add labels
     fig.update_xaxes(tickfont=dict(size=16),row=1,col=1)
@@ -351,7 +352,7 @@ for VOC_weighted in [VOC_PM_weighted,VOC_CO_weighted]:
         fig.update_yaxes(title="cancer risk per 10<sup>6</sup> <br> 10 &mu;g m<sup>-3</sup> PM<sub>1</sub>",
                          color='black',
                          row=3, col=1)
-        plotly.offline.plot(fig, filename= fig_path+ fig_desc + 'barchart_PMweight')
+        plotly.offline.plot(fig, filename= fig_path+ fig_desc + 'barchart_PMweight.html')
         fig.write_image(fig_path+fig_desc+ '_barchartrisks_PMweight.png',width=900,height=700,scale=4) 
     if f==1:
         fig.update_yaxes(title="hazard index <br> 10 ppb CO",
@@ -363,7 +364,7 @@ for VOC_weighted in [VOC_PM_weighted,VOC_CO_weighted]:
         fig.update_yaxes(title="cancer risk per 10<sup>6</sup> <br> 10 ppb CO",
                          color='black',
                          row=3, col=1)
-        plotly.offline.plot(fig, filename= fig_path+ fig_desc + 'barchart_COweight')
+        plotly.offline.plot(fig, filename= fig_path+ fig_desc + 'barchart_COweight.html')
         fig.write_image(fig_path+fig_desc+ '_barchartrisks_COweight.png',width=900,height=700,scale=4) 
 
     f+= 1
