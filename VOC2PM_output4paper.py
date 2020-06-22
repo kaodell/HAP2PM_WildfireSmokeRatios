@@ -121,7 +121,7 @@ for age in ['young', 'medium', 'old', 'extra old']:
         TOGA_mrg_agegroup[' '+voc].iloc[rmv_inds] = np.nan
         VOC_PM_ratio[age+' VOC PM1 ratio, median [ppt/ugm-3]'].iloc[i] = np.round(np.nanmedian(VOC_PM_weighted_agegroup[' '+voc+'_elv']),2)
         VOC_PM_ratio[age+' VOC PM1 ratio, mean [ppt/ugm-3]'].iloc[i] = np.round(np.nanmean(VOC_PM_weighted_agegroup[' '+voc+'_elv']),2)
-        VOC_PM_ratio[age+' VOC PM1 ratio, standard deviation'].iloc[i] = np.round(np.nanstd(VOC_PM_weighted_agegroup[' '+voc+'_elv']),2)
+        VOC_PM_ratio[age+' VOC PM1 ratio, standard deviation'].iloc[i] = np.round(np.nanstd(VOC_PM_weighted_agegroup[' '+voc+'_elv'],ddof=1),2)
         # n
         nobs = len(np.where(np.isfinite(VOC_PM_weighted_agegroup[' '+voc+'_elv']))[0])
         VOC_PM_ratio[age+' VOC PM1 ratio, n obs'].iloc[i] = nobs

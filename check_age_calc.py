@@ -66,9 +66,9 @@ smoke_inds = np.delete(smoke_inds1,rmv_smk_inds)
 nsmoke_inds = np.delete(not_smoke_inds1,rmv_nsmk_inds)
 
 # calculate backgrounds
-acrylonitrile_bk = np.nanmean(TOGA_mrg[' Acrylonitrile_TOGA'].iloc[nsmoke_inds]) + np.nanstd(TOGA_mrg[' Acrylonitrile_TOGA'].iloc[nsmoke_inds])
-acrolein_bk = np.nanmean(TOGA_mrg[' Acrolein_TOGA'].iloc[nsmoke_inds]) + np.nanstd(TOGA_mrg[' Acrolein_TOGA'].iloc[nsmoke_inds])
-x2mefuran_bk = np.nanmean(TOGA_mrg[' x2MeFuran_TOGA'].iloc[nsmoke_inds]) + np.nanstd(TOGA_mrg[' x2MeFuran_TOGA'].iloc[nsmoke_inds])
+acrylonitrile_bk = np.nanmean(TOGA_mrg[' Acrylonitrile_TOGA'].iloc[nsmoke_inds]) + np.nanstd(TOGA_mrg[' Acrylonitrile_TOGA'].iloc[nsmoke_inds],ddof=1)
+acrolein_bk = np.nanmean(TOGA_mrg[' Acrolein_TOGA'].iloc[nsmoke_inds]) + np.nanstd(TOGA_mrg[' Acrolein_TOGA'].iloc[nsmoke_inds],ddof=1)
+x2mefuran_bk = np.nanmean(TOGA_mrg[' x2MeFuran_TOGA'].iloc[nsmoke_inds]) + np.nanstd(TOGA_mrg[' x2MeFuran_TOGA'].iloc[nsmoke_inds],ddof=1)
 
 
 #%% caclulate emitted concentrations of species for each emissions pass

@@ -51,7 +51,7 @@ desc_name_pt1 = '_NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate'
 # paper uses mean
 # function for age tracers, use mean no smoke + 1 standard deviation
 def find_age_inds(mrg_data,tracer_name,nsmoke_inds,smoke_inds,dc):
-    age_bk = np.nanmean(mrg_data[tracer_name].iloc[nsmoke_inds]) + np.nanstd(mrg_data[tracer_name].iloc[nsmoke_inds])
+    age_bk = np.nanmean(mrg_data[tracer_name].iloc[nsmoke_inds]) + np.nanstd(mrg_data[tracer_name].iloc[nsmoke_inds],ddof=1)
     if dc:
         age_ER = (mrg_data[tracer_name] - age_bk)/(mrg_data['CO_comb']-bk_CO)
         smoke_age_inds = np.where(age_ER[smoke_inds] > 0 )
