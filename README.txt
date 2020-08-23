@@ -31,7 +31,7 @@
 # 3) run VOC-PM_TOGA_sensitivity_tests_NASAmrg.py to identify smoke-influenced points, calculate non-smoke mixing ratios, calculate       chemical smoke age and place PTR variables on TOGA timescale
 # 4) run WE-CAN_paper_figures_final_NASAmrg.py to weight HAPs by PM and risk and create figures 1-3 and S2.1 in the paper
 # 5) run VOC2PM_output4paper.py to calculte HAP/PM ratios from paper supplentary files
-# 6) download kriged PM2.5 from Colorado State University Repositories, DOI(s): xxxxxx
+# 6) download kriged PM2.5 from Colorado State University Repositories, DOI(s): https://dx.doi.org/10.25675/10217/193258 and https://doi.org/10.25675/10217/208602
 # 7) run PM_and_VOC_maps4paper.py to calculate chronic HAPs exposure and risk, and create figure 4 in the paper
 # ... for supplemental figures
 # 8) run check_age_calc.py to create figures S1.1 and S1.2
@@ -43,3 +43,5 @@
 #	in young smoke for Kat Navarro. 
 
 # 06.15.20 - final codes for paper analysis uploaded
+
+# 08.23.20 - updated versions of code after paper revisions
