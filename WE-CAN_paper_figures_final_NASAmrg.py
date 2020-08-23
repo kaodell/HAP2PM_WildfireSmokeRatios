@@ -21,9 +21,9 @@ mapbox_access_token='pk.eyJ1Ijoia2FvZGVsbCIsImEiOiJjanZza3k1bGkzMHZoNDhwYjdybTYy
 
 # for paper
 fig_path = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/paper_figures/final/'
-fig_desc = '_NASA_R2mrg_85.275_w200_CH3CN_PTRfix_R1TOGAupdate'
-mrg_name = 'TOGA_mrg_w_age__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate85.275_w200_CH3CN.csv'
-voc_bk_name = 'VOC_bks__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate85.275_w200_CH3CN.csv'
+fig_desc = '_NASA_R2mrg_85.275_w200_CH3CN_PTRfix_R1TOGAupdate_reviewupdates_95pct_50pctall'
+mrg_name = 'TOGA_mrg_w_age__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate_95pct_50pctall_85.275_w200_CH3CN.csv'
+voc_bk_name = 'VOC_bks__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate_95pct_50pctall_85.275_w200_CH3CN.csv'
 
 # sensitivity tests
 #fig_path = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/data analysis/sensitivity_tests/sensitivity_figures/leave in negative enhancements/'
@@ -34,13 +34,15 @@ voc_bk_name = 'VOC_bks__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate85.275_w200_CH
 #mrg_name = 'TOGA_mrg_w_age__NASA_R2_anth_tracers_bk_nagebk_plus1sig85.275_w200_CH3CN.csv'
 #voc_bk_name = 'VOC_bks__NASA_R2_anth_tracers_bk_nagebk_plus1sig85.275_w200_CH3CN.csv'
 
-#fig_path = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/data analysis/sensitivity_tests/sensitivity_figures/detection_limit_sensitivity/'
-#fig_desc = '_NASA_R2mrg_85.275_w200_CH3CN_addPTRcheck_04bdl'
-#mrg_name = 'TOGA_mrg_w_age__NASA_R2_anth_tracers_bk_addPTRcheck_04bdl85.275_w200_CH3CN.csv'
-#voc_bk_name = 'VOC_bks__NASA_R2_anth_tracers_bk_addPTRcheck_04bdl85.275_w200_CH3CN.csv'
-
+# non-parimetric methods background senstivity
+#fig_path = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/data analysis/sensitivity_tests/sensitivity_figures/nonpar_background_sensitivity/'
+#fig_desc = '_NASA_R2mrg_85.275_w200_CH3CN_PTRfix_R1TOGAupdate_reviewupdates_75pct_75pctall'
+#mrg_name = 'TOGA_mrg_w_age__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate_75pct_75pctall_85.275_w200_CH3CN.csv'
+#voc_bk_name = 'VOC_bks__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate_75pct_75pctall_85.275_w200_CH3CN.csv'
 
 age_colors = ['grey','purple','red','orange']
+# these age names don't match paper/figure names because they were from an earlier iteration
+# and I was too lazy to update the names when we updated the age categories.
 age_names = ['not smoke', 'young, < 0.5 days','med, 0.5-1.5 days', 'old, < 4 days']
 age_names_fig = np.array(['not smoke','young, < 1 day', 'medium, 1-3 days','old, > 3 days' ])
 states_plot = ['Colorado','California','Idaho','Montana','Wyoming','Washington',
@@ -60,7 +62,7 @@ bk_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/
 VOC_bks = pd.read_csv(bk_fn)
 
 # spreadsheet with HAPs, reference concentrations, and molecular weight
-HAPs_RFs_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/health risk tables/HAPs_EFs_RFs_forcode_final_final_WadeUpdate.csv'
+HAPs_RFs_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/health risk tables/HAPs_EFs_RFs_forcode_final_final_WadeUpdate_onlyREL4acute.csv'
 HAPs_RFs_raw = pd.read_csv(HAPs_RFs_fn,header=0,skiprows=[1,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,
                                                           49,50,51])
 
@@ -69,29 +71,35 @@ HAPs_RFs = HAPs_RFs_raw.set_index('TOGA name')
 healthVOCs = HAPs_RFs.index
 healthVOCs_fignames = HAPs_RFs['Name'].values
 
-#%% Convert units of chronic cancer risk ratios and noncancer hazard values to ppt
+#%% Convert units of chronic cancer risk ratios and noncancer hazard values to ug/m3
 # Convert units of chronic cancer risk ratios from 1/(ug/m3) -> 1/ppt
 # conversion factor converts convert 1/ug/m3 to 1/ppt
-conv_factor = ((P_std)/(T_std*R))*(1.*10.**-12.)*(1.*10.**6)*(1.*10.**6) #second 10**6 so number is ppl/mil risk
+# paper revisions: we are acutually going to convert WE-CAN HAPS to mass concentrations at STP
+# so here we convert cancer risk to be in ppl/mil and convert risk factors from mg/m3 to ug/m3
 
-crf_ppt = HAPs_RFs['chronic cancer risk factor']*HAPs_RFs['molecular weight']*conv_factor   
-HAPs_RFs['crf_ppt'] = crf_ppt
+#conv_factor = ((P_std)/(T_std*R))*(1.*10.**-12.)*(1.*10.**6)*(1.*10.**6) #second 10**6 so number is ppl/mil risk
+
+#crf_ppt = HAPs_RFs['chronic cancer risk factor']*HAPs_RFs['molecular weight']*conv_factor   
+#HAPs_RFs['crf_ppt'] = crf_ppt
+HAPs_RFs['crf_mc'] = HAPs_RFs['chronic cancer risk factor']*(1.*10.**6)# 10**6 so number is ppl/mil risk
 
 # convert referce concentrations from mg/m3 to ppt
-arl_ppt = HAPs_RFs['acute risk factor']*(1./(1000.*HAPs_RFs['molecular weight']))*(R*T_std/P_std)*(1.*10.**12)
-HAPs_RFs['arl_ppt'] = arl_ppt
+#arl_ppt = HAPs_RFs['acute risk factor']*(1./(1000.*HAPs_RFs['molecular weight']))*(R*T_std/P_std)*(1.*10.**12)
+#HAPs_RFs['arl_ppt'] = arl_ppt
+HAPs_RFs['arl_mc'] = HAPs_RFs['acute risk factor']*1000.0 # convert to ug/m3
 
-crl_ppt = HAPs_RFs['chronic noncancer risk factor']*(1./(1000.*HAPs_RFs['molecular weight']))*(R*T_std/P_std)*(1.*10.**12)
-HAPs_RFs['crl_ppt'] = crl_ppt
+#crl_ppt = HAPs_RFs['chronic noncancer risk factor']*(1./(1000.*HAPs_RFs['molecular weight']))*(R*T_std/P_std)*(1.*10.**12)
+#HAPs_RFs['crl_ppt'] = crl_ppt
+HAPs_RFs['crl_mc'] = HAPs_RFs['chronic noncancer risk factor']*1000.0 # convert to ug/m3    
 
 #%% combine old and v old age categories
 TOGA_mrg.loc[TOGA_mrg.chem_smoke_age =='> 4 days', 'chem_smoke_age'] = 'old, < 4 days'
 
 #%% remove urban points
-anth_inds = np.array(TOGA_mrg['anth_flag']==0)
-TOGA_mrg_nourban = TOGA_mrg.iloc[anth_inds]
+non_anth_inds = np.array(TOGA_mrg['anth_flag']==0)
+TOGA_mrg_nourban = TOGA_mrg.iloc[non_anth_inds]
 TOGA_mrg_nourban.reset_index(inplace=True,drop=True)
-#%% remove TOGA inds where AMS is nans or all TOGA or all PTR are nans
+#%% remove TOGA inds where AMS is nans or all TOGA and PTR health VOCs are nans
 all_nans = []
 count = 0
 for i in range(TOGA_mrg_nourban.shape[0]):
@@ -104,19 +112,6 @@ for i in range(TOGA_mrg_nourban.shape[0]):
 unans = np.unique(all_nans)
 TOGA_mrg_datause = TOGA_mrg_nourban.drop(unans,axis=0)
 TOGA_mrg_datause.reset_index(inplace=True,drop=True)
-#%% make df for fig names and colors
-fig_names = pd.DataFrame(data = {'VOC_names' : ' '+healthVOCs,'fig_names' : healthVOCs_fignames})
-fig_names = fig_names.set_index('VOC_names')
-# add colors for plotting in box plots
-chemical_colors =  fig_names.shape[0]*['grey']
-fig_names['color'] = chemical_colors
-
-i=0
-VOCs_w_color = ['CH3CHO_TOGA','Acrolein_TOGA','Acrylonitrile_TOGA','Benzene_TOGA','CH2O_TOGA','HCN_TOGA']
-colors = ['#ec7063','#5dade2','#f39c12','#45b39d','#1F618D','#884EA0 ']
-for VOC_name in VOCs_w_color:
-    fig_names['color'][' '+VOC_name] = colors[i]
-    i += 1
 
 #%% create VOC_elv dataframe by subtracting off background
 VOC_smoke_elv = pd.DataFrame(data={'  STARTTIME' : TOGA_mrg['  STARTTIME'],
@@ -133,12 +128,48 @@ for VOC_name in healthVOCs:
 negs = np.where(VOC_smoke_elv <0.)
 for i in range(len(negs[0])):
     VOC_smoke_elv.iloc[negs[0][i],negs[1][i]]=0
-# age chem age
+# add chem age
 VOC_smoke_elv['chem_smoke_age'] = TOGA_mrg['chem_smoke_age'].copy(deep=True)
 # remove urban points
 anth_inds = np.where(TOGA_mrg['anth_flag']>0)[0]
 VOC_smoke_elv_nourban = VOC_smoke_elv.drop(index=anth_inds)
 VOC_smoke_elv_nourban.reset_index(inplace=True,drop=True)
+
+# only want to use nourban from now on so delete VOC_smoke_elv
+del VOC_smoke_elv
+#%% create TOGA array with HAPs in mass concentrations 
+TOGA_mrg_mc = TOGA_mrg_datause[['  STARTTIME',' UTC_mid',' FLIGHT',' LATITUDE',' LONGITUDE','chem_smoke_age',
+                        'datetime_start','datetime_stop']].copy(deep=True)
+VOC_smoke_elv_nourban_mc = pd.DataFrame(data={'  STARTTIME' : VOC_smoke_elv_nourban['  STARTTIME'],
+                                   ' STOPTIME': VOC_smoke_elv_nourban[' STOPTIME'],
+                                   ' FLIGHT':VOC_smoke_elv_nourban[' FLIGHT']})
+# add PM and CO
+VOC_smoke_elv_nourban_mc['PM_elv'] = VOC_smoke_elv_nourban['PM_elv']
+VOC_smoke_elv_nourban_mc['CO_comb_elv'] = VOC_smoke_elv_nourban['CO_comb_elv']*28.01*10**-3.0*((P_std)/(T_std*R))
+
+for VOC in healthVOCs:
+    TOGA_mrg_mc[' '+VOC] = TOGA_mrg_datause[' '+VOC]*HAPs_RFs.loc[VOC]['molecular weight']*10**-6.0*((P_std)/(T_std*R))
+    VOC_smoke_elv_nourban_mc[' '+VOC+'_elv'] = VOC_smoke_elv_nourban[' '+VOC+'_elv']*HAPs_RFs.loc[VOC]['molecular weight']*10**-6.0*((P_std)/(T_std*R))
+
+# age chem age
+VOC_smoke_elv_nourban_mc['chem_smoke_age'] = VOC_smoke_elv_nourban['chem_smoke_age'].copy(deep=True)
+
+# delete non-mass concentration versions, don't want to use these in figures
+del TOGA_mrg_datause, VOC_smoke_elv_nourban
+#%% make df for fig names and colors
+fig_names = pd.DataFrame(data = {'VOC_names' : ' '+healthVOCs,'fig_names' : healthVOCs_fignames})
+fig_names = fig_names.set_index('VOC_names')
+# add colors for plotting in box plots
+chemical_colors =  fig_names.shape[0]*['grey']
+fig_names['color'] = chemical_colors
+
+i=0
+VOCs_w_color = ['CH3CHO_TOGA','Acrolein_TOGA','Acrylonitrile_TOGA','Benzene_TOGA','CH2O_TOGA','HCN_TOGA']
+colors = ['#ec7063','#5dade2','#f39c12','#45b39d','#1F618D','#884EA0 ']
+for VOC_name in VOCs_w_color:
+    fig_names['color'][' '+VOC_name] = colors[i]
+    i += 1
+
 ####################################################
 # Figures
 ####################################################  
@@ -151,7 +182,7 @@ fig.add_trace(go.Scattergeo(
     mode='lines',
     marker_color='grey',marker_size=1, name = 'WE-CAN flight track'))
 i=0
-age_groups_use = TOGA_mrg_datause.groupby(by='chem_smoke_age')
+age_groups_use = TOGA_mrg_mc.groupby(by='chem_smoke_age')
 n = []
 for age_name in age_names[1:]:
     group = age_groups_use.get_group(age_name)
@@ -159,7 +190,7 @@ for age_name in age_names[1:]:
     n.append(nobs)
     fig.add_trace(go.Scattergeo(lat=group[' LATITUDE'],lon=group[' LONGITUDE'],mode='markers',
         marker = dict(color=age_colors[i+1],size=4,opacity=0.7),
-        hovertext = group[' FLIGHT'],name = age_names_fig[i+1] + ' (' + str(nobs)+')'))
+        hovertext = group[' FLIGHT'],name = age_names_fig[i+1] + ' (n = ' + str(nobs)+')'))
     i += 1
 fig.update_layout(
     geo = dict(scope = 'north america',showland = True,landcolor = "white",
@@ -172,7 +203,7 @@ fig.update_layout(
         font=dict(size=8.5,color="black"),
         bgcolor="White",bordercolor="Grey",borderwidth=1))
 fig.show()
-fig.write_image(fig_path+fig_desc+  'ChemSmokeAge_wout_vold.png',scale=8)  
+fig.write_image(fig_path+fig_desc+  'ChemSmokeAge_wout_vold.png',scale=9,width=600,height=600,)  
 
 #%% Figure 2: distribution of HAPs for each age with reference concentration
 # first, sort VOC list by WE-CAN ER
@@ -184,7 +215,7 @@ for i in range(len(HAPs_mrg_names)):
     HAPs_mrg_names[i]=' '+HAPs_mrg_names[i]
 
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=HAPs_RFs['arl_ppt'][sorted_healthVOCs],
+fig.add_trace(go.Scatter(x=HAPs_RFs['arl_mc'][sorted_healthVOCs],
                          y=fig_names['fig_names'][HAPs_mrg_names],
          mode = 'markers',marker_color='black',marker_size=5,
          marker=dict(symbol=2),name='acute reference concentration'))
@@ -192,9 +223,9 @@ i=0
 for age_name in np.flip(age_names[1:],axis=0):
     names = []
     concs = []
-    inds = np.where(TOGA_mrg_nourban['chem_smoke_age'] == age_name)
+    inds = np.where(VOC_smoke_elv_nourban_mc['chem_smoke_age'] == age_name)
     for VOC_name in sorted_healthVOCs:
-        conc = VOC_smoke_elv_nourban[' '+VOC_name + '_elv'].iloc[inds]
+        conc = VOC_smoke_elv_nourban_mc[' '+VOC_name + '_elv'].iloc[inds]
         name = [fig_names['fig_names'][' '+VOC_name]]*len(inds[0])
         concs = np.hstack([concs,conc])
         names = np.hstack([names,name])
@@ -209,10 +240,10 @@ for age_name in np.flip(age_names[1:],axis=0):
     i += 1  
 fig.update_layout(boxmode='group',
                   plot_bgcolor='white',
-                  legend=dict(traceorder='reversed',x=0.21,y=0.03,font_size=18,
+                  legend=dict(traceorder='reversed',x=0.31,y=0.03,font_size=18,
                               bordercolor="White",borderwidth=1))
-fig.update_xaxes(title_text='background-corrected mixing ratio [pptv]',
-                 type='log',range=[-1,8],tickfont=dict(size=16),titlefont=dict(size=20))             
+fig.update_xaxes(title_text='background-corrected mass concentration [&mu;g m<sup>-3</sup>]',
+                 type='log',range=[-4,5],tickfont=dict(size=16),titlefont=dict(size=20))             
 fig.update_traces(orientation='h')
 fig.update_yaxes(tickfont=dict(size=14))
 plotly.offline.plot(fig, filename= fig_path+ fig_desc+ '_VOC_elv_boxplot_hazardv2')
@@ -223,46 +254,48 @@ fig.write_image(fig_path+fig_desc+ '_VOC_elv_boxplot_hazardv2.png',width=900,hei
 #           also supplemental figure of each weighted by CO for supplement
 
 # first calc PM- and CO-weighted VOCs for each TOGA observation
-VOC_PM_weighted = VOC_smoke_elv_nourban[VOC_smoke_elv_nourban.columns[:5]].copy(deep=True)
-VOC_CO_weighted = VOC_smoke_elv_nourban[VOC_smoke_elv_nourban.columns[:5]].copy(deep=True)
-zeroPM = np.where(VOC_smoke_elv_nourban['PM_elv']==0)
-PM_nans = np.where(np.isnan(VOC_smoke_elv_nourban['PM_elv'])) # we will use this in the loop
+VOC_PM_weighted = VOC_smoke_elv_nourban_mc[VOC_smoke_elv_nourban_mc.columns[:5]].copy(deep=True)
+VOC_CO_weighted = VOC_smoke_elv_nourban_mc[VOC_smoke_elv_nourban_mc.columns[:5]].copy(deep=True)
+zeroPM = np.where(VOC_smoke_elv_nourban_mc['PM_elv']==0)
+PM_nans = np.where(np.isnan(VOC_smoke_elv_nourban_mc['PM_elv'])) # we will use this in the loop
 
-for voc in VOC_smoke_elv_nourban.columns[5:-1]:
-    VOC_PM_weighted[voc] = VOC_smoke_elv_nourban[voc].values/VOC_smoke_elv_nourban['PM_elv'].values
+for voc in VOC_smoke_elv_nourban_mc.columns[5:-1]:
+    VOC_PM_weighted[voc] = VOC_smoke_elv_nourban_mc[voc].values/VOC_smoke_elv_nourban_mc['PM_elv'].values
     # divide by zero gives inf, replace with nans
     VOC_PM_weighted[voc].iloc[zeroPM] = np.nan
 
-    VOC_CO_weighted[voc] = VOC_smoke_elv_nourban[voc].values/VOC_smoke_elv_nourban['CO_comb_elv'].values
+    VOC_CO_weighted[voc] = VOC_smoke_elv_nourban_mc[voc].values/VOC_smoke_elv_nourban_mc['CO_comb_elv'].values
     # make CO nans here to so we are comparing the same data
     # CO_elv is never 0 in smoke, because the background CO calculation (~70 ppb) is less 
     # than the minimum required for smoke events (85 ppb), so it doesn't make a difference to replace CO infs
-    VOC_CO_weighted[voc].iloc[zeroPM] = np.nan
+    VOC_CO_weighted[voc].iloc[zeroPM] = np.nan # compare same points as PM
 
-VOC_PM_weighted['chem_smoke_age'] = VOC_smoke_elv_nourban['chem_smoke_age'].copy(deep=True)
-VOC_CO_weighted['chem_smoke_age'] = VOC_smoke_elv_nourban['chem_smoke_age'].copy(deep=True)
+VOC_PM_weighted['chem_smoke_age'] = VOC_smoke_elv_nourban_mc['chem_smoke_age'].copy(deep=True)
+VOC_CO_weighted['chem_smoke_age'] = VOC_smoke_elv_nourban_mc['chem_smoke_age'].copy(deep=True)
 
 # make figure and calc medians of PM- and CO- weighted VOCs for each age category
+# change this to median(VOC)/median(PM)
 legend_bool = [False,False,True] # to only plot legend on final age group so it isn't repeated
 f = 0 #indicate which figure is being plotted
 for VOC_weighted in [VOC_PM_weighted,VOC_CO_weighted]:
+    
     row = 1
     
     # create figure 
     fig = plotly.subplots.make_subplots(rows=3, cols=1,
     subplot_titles = ['(a) Acute','(b) Chronic Noncancer','(c) Cancer'])
 
-    for risk in ['arl_ppt','crl_ppt','crf_ppt']:
+    for risk in ['arl_mc','crl_mc','crf_mc']:
         VOCs_w_risk = []
-        VOC_risk_weighted = VOC_weighted[VOC_weighted.columns[:]].copy(deep=True)
+        VOC_risk_weighted = VOC_weighted.copy(deep=True)
         # now calculate risk per 10 ug PM
-        if risk in ['arl_ppt','crl_ppt']:
-            for voc in VOC_smoke_elv_nourban.columns[5:-1]:
+        if risk in ['arl_mc','crl_mc']:
+            for voc in VOC_smoke_elv_nourban_mc.columns[5:-1]:
                 VOC_risk_weighted[voc] = 10.0*VOC_weighted[voc]/HAPs_RFs[risk][voc[1:-4]]
                 if np.isfinite(HAPs_RFs[risk][voc[1:-4]]):
                     VOCs_w_risk.append(voc)
-        if risk == 'crf_ppt':
-            for voc in VOC_smoke_elv_nourban.columns[5:-1]:
+        if risk == 'crf_mc':
+            for voc in VOC_smoke_elv_nourban_mc.columns[5:-1]:
                 VOC_risk_weighted[voc] = 10.0*VOC_weighted[voc]*HAPs_RFs[risk][voc[1:-4]]
                 if np.isfinite(HAPs_RFs[risk][voc[1:-4]]):
                     VOCs_w_risk.append(voc)
@@ -304,10 +337,10 @@ for VOC_weighted in [VOC_PM_weighted,VOC_CO_weighted]:
         total_risk = np.nansum(VOC_risk_weighted.iloc[:,5:-1].values,axis=1)
         # make places where PM_elv is nans or zeros nans, in the sum they turn into zeros
         # PM_elv is only zero 3 times during the smoke points (twice in young, once in old)
-        total_risk[PM_nans] = np.nan
+        total_risk[PM_nans] = np.nan 
         total_risk[zeroPM] = np.nan
         # also remove places where any of the VOCs with risk are nans, these will
-        # be counted as zeros in the sum, but shouldn't be and will bias risk estiamte low
+        # be counted as zeros in the sum of risk for that point, but shouldn't be and will bias risk estiamte low
         rmv_inds = []
         for i in range(VOC_risk_weighted.shape[0]):
             if np.any(np.isnan(VOC_risk_weighted[VOCs_w_risk].iloc[i])):
@@ -319,11 +352,11 @@ for VOC_weighted in [VOC_PM_weighted,VOC_CO_weighted]:
         for age_name in age_names[1:]:
             age_inds = np.where(VOC_risk_weighted['chem_smoke_age']==age_name)
             total_risk_age = total_risk[age_inds]
-            # print 'total risk length', age_name, len(np.where(np.isfinite(total_risk_age))[0])
+            print 'total risk length', age_name, len(np.where(np.isfinite(total_risk_age))[0])
             med_tot_risk = np.append(med_tot_risk,np.nanmedian(total_risk_age))
             lower_q_tot_risk = np.append(lower_q_tot_risk,np.nanpercentile(total_risk_age,25,interpolation='linear'))
             upper_q_tot_risk = np.append(upper_q_tot_risk,np.nanpercentile(total_risk_age,75,interpolation='linear'))
-        print 'methodA, sum indv. med\n',total_risk_methodA, 'methodB, total med\n', med_tot_risk
+        print 'methodA, sum indv. med\n',total_risk_methodA
         # plot the risk based on total_med risk in method A, this way
         # what is plotted is the 25th-75th percentile of the total risk, when it
         # can be estimated for individual points (all species w/ risk have data)
@@ -355,13 +388,13 @@ for VOC_weighted in [VOC_PM_weighted,VOC_CO_weighted]:
         plotly.offline.plot(fig, filename= fig_path+ fig_desc + 'barchart_PMweight.html')
         fig.write_image(fig_path+fig_desc+ '_barchartrisks_PMweight.png',width=900,height=700,scale=4) 
     if f==1:
-        fig.update_yaxes(title="hazard index <br> 10 ppb CO",
+        fig.update_yaxes(title="hazard index <br> 10 &mu;g m<sup>-3</sup> CO",
                  color='black',
                  row=1, col=1)
-        fig.update_yaxes(title="hazard index <br> 10 ppb CO",
+        fig.update_yaxes(title="hazard index <br> 10 &mu;g m<sup>-3</sup> CO",
                          color='black',
                          row=2, col=1)
-        fig.update_yaxes(title="cancer risk per 10<sup>6</sup> <br> 10 ppb CO",
+        fig.update_yaxes(title="cancer risk per 10<sup>6</sup> <br> 10 &mu;g m<sup>-3</sup> CO",
                          color='black',
                          row=3, col=1)
         plotly.offline.plot(fig, filename= fig_path+ fig_desc + 'barchart_COweight.html')

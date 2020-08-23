@@ -74,6 +74,7 @@ LLOD_flag = -888.0
 # replace LLOD with limit of detection for anthropogenic tracers
 for VOC_name in anth_tracers:
     TOGA_mrg[' '+VOC_name].replace(to_replace = LLOD_flag,value = 0.5*TOGA_LLOD[VOC_name][0],inplace=True)
+# also replace LLOD flag for 2methylpentane, which is used later
 TOGA_mrg[' x2MePentane_TOGA'].replace(to_replace = LLOD_flag,value = 0.5*TOGA_LLOD['x2MePentane_TOGA'][0],inplace=True)
 
 TOGA_mrg.replace(-9999999.0,np.nan, inplace=True)
@@ -125,8 +126,9 @@ fig.update_layout(
         center=go.layout.mapbox.Center(lat=45.92,lon=-115.07),pitch=0,zoom=5))    
 plotly.offline.plot(fig, filename=fig_path+  'anth_tracer'  )
 
-#%% plot x vs PM to see if this removed the clearly urban influced points 
-#   in the VOC:PM relationship plot, just using AMS total PM is fine here
+#%% plot 2methylpentane vs PM to see if this removed the clearly urban influced points 
+#   in the VOC:PM relationship plot, just using AMS total PM is fine here, we will calc PM for the rest of the 
+#   analysis in the next code
 fig = go.Figure(go.Scatter(x=TOGA_mrg[' Total_AMS'],
                            y=TOGA_mrg[' x2MePentane_TOGA'],
                            mode='markers'))

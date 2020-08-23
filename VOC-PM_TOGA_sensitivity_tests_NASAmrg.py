@@ -32,7 +32,7 @@ PTR_VOC_names = ['ACETAMIDE_C2H5NO','METHYL_METHACRYLATE_C5H8O2','PHENOL_C6H6O',
 
 # thsese should be in order [young, medium, old]
 traceVOC_names = [' x2MeFuran_TOGA',' Acrolein_TOGA',' Acrylonitrile_TOGA']
-age_names = ['not smoke', 'young, < 0.5 days','med, 0.5-1.5 days', 'old, < 4 days','> 4 days']
+age_names = ['not smoke', 'young, < 0.5 days','med, 0.5-1.5 days', 'old, < 4 days']
 age_colors = ['blue','purple','red','orange','green']
 
 # paths for figures and datafiles
@@ -45,13 +45,15 @@ PTR_fp = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health
 
 # this indictes method of background calculation and PM estimation portion indicating HCN and CO elevation done in loop
 # nameing convetion in sensitivity_readme file
-desc_name_pt1 = '_NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate' 
+desc_name_pt1 = '_NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate_95pct_50pctall_' 
 #%% user defined functions
-# here can change if we're using mean or median for background
-# paper uses mean
+# here can change what is used for age-tracer and all VOCs background
+
 # function for age tracers, use mean no smoke + 1 standard deviation
+# update: post-review we use 95th percentile
 def find_age_inds(mrg_data,tracer_name,nsmoke_inds,smoke_inds,dc):
-    age_bk = np.nanmean(mrg_data[tracer_name].iloc[nsmoke_inds]) + np.nanstd(mrg_data[tracer_name].iloc[nsmoke_inds],ddof=1)
+    #age_bk = np.nanmean(mrg_data[tracer_name].iloc[nsmoke_inds]) + np.nanstd(mrg_data[tracer_name].iloc[nsmoke_inds],ddof=1)
+    age_bk = np.round(np.nanpercentile(mrg_data[tracer_name].iloc[nsmoke_inds],95),1)
     if dc:
         age_ER = (mrg_data[tracer_name] - age_bk)/(mrg_data['CO_comb']-bk_CO)
         smoke_age_inds = np.where(age_ER[smoke_inds] > 0 )
@@ -62,11 +64,11 @@ def find_age_inds(mrg_data,tracer_name,nsmoke_inds,smoke_inds,dc):
 
     return age_inds, age_bk
 
-# function for other VOCs, use mean no smoke
+# function for other VOCs, use median no smoke
 def calculate_bk(merge,var_name,bk_inds):
     var = np.copy(merge[var_name].values)
     #var_std = np.nanstd(var[bk_inds])
-    var_bk = np.nanmean(var[bk_inds])
+    var_bk = np.nanmedian(var[bk_inds])
     return var_bk 
 #%% import data
 # load data from 'find_anthropogenic_tracers_NASAmrg.py' output
@@ -77,7 +79,7 @@ TOGA_LLOD_fn =  '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC
 TOGA_LLOD = pd.read_csv(TOGA_LLOD_fn)
 
 # load HAPs spreadsheet for healthVOC names
-HAPs_RFs_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/health risk tables/HAPs_EFs_RFs_forcode_final_final_WadeUpdate.csv'
+HAPs_RFs_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/health risk tables/HAPs_EFs_RFs_forcode_final_final_WadeUpdate_onlyREL4acute.csv'
 HAPs_RFs_raw = pd.read_csv(HAPs_RFs_fn,header=0,skiprows=[1,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,
                                                           49,50,51])
 HAPs_RFs = HAPs_RFs_raw.set_index('TOGA name')
@@ -98,7 +100,8 @@ for VOC_name in TOGA_LLOD.keys()[3:]:
     # TOGA_mrg[' ' + VOC_name].replace(to_replace = TOGA_LLOD_flag,value = TOGA_LLOD[VOC_name][0],inplace=True)
 
 #PTR LOD replacement is handled later
-#%% when co from the qcl is missing, use picarro otherwise use qcl 
+    
+#%% when co from the qcl is missing, use picarro, otherwise use qcl 
 # call new combined CO CO_comb
 TOGA_mrg['CO_comb'] = np.where(np.isnan(TOGA_mrg[' CO_QCL']),
                           TOGA_mrg[' CO_PICARRO'].values,
@@ -110,7 +113,7 @@ TOGA_mrg['PM1_ams_sp2'] = TOGA_mrg[' M_rBC_SDI_SP2'] + TOGA_mrg[' Total_AMS']
 #%% load all PTR data and prep to average for TOGA flight
 # define dates and RFs for each flight
 dates = ['0724','0726','0730','0731','0802','0803','0806','0808','0809','0813','0815','0816','0820','0823','0826','0828','0906','0910','0913']
-RFs = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19']
+RFs = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19'] # 17, 18, and 19 are educational flights; no TOGA data
 # load first flight to make array
 PTR_filename = PTR_fp + '/WECAN-PTRTOFMS_C130_2018'+ dates[0] + '_R1.ict'
 PTR_mrg_all_raw = pd.read_csv(PTR_filename,header=77)
@@ -147,7 +150,7 @@ TOGA_mrg['datetime_stop'] = TOGA_mrg[' FLIGHT'].values*10**5. + TOGA_mrg[' STOPT
 
 # now merge to TOGA timescale
 ptr_start_times = np.array(PTR_mrg_all['datetime_start'])
-ptr_stop_times = np.array(PTR_mrg_all['datetime_start'] + 1.)
+ptr_stop_times = np.array(PTR_mrg_all['datetime_start'] + 1.0)
 for var_name in PTR_VOC_names:
     TOGA_mrg[' '+var_name+'_PTR'] = [-555]*TOGA_mrg.shape[0]
 for i in range(TOGA_mrg.shape[0]):
@@ -161,12 +164,12 @@ for i in range(TOGA_mrg.shape[0]):
         # no PTR data at start of TOGA, sometimes happens at start/end of flights
         for PTR_VOC_name in PTR_VOC_names:
              TOGA_mrg[' '+PTR_VOC_name+'_PTR'].iloc[i] = np.nan
-        print 'ptr times dont allign'
+        print 'ptr times dont allign @ start'
     elif len(ptr_ind_stop) < 1:
         # no PTR data at end of TOGA, sometimes happens at start/end of flights
         for PTR_VOC_name in PTR_VOC_names:
              TOGA_mrg[' '+PTR_VOC_name+'_PTR'].iloc[i] = np.nan
-        print 'ptr times dont allign'
+        print 'ptr times dont allign @ stop'
     else:   
         # assign value and convert to ppt
         for PTR_VOC_name in PTR_VOC_names:
@@ -177,7 +180,7 @@ for i in range(TOGA_mrg.shape[0]):
 
 #%% identify smoke/ nosmoke inds and calculate backgrounds for different sensitivitys
 #   save data
-# outter loops are CO/HCN maxes
+# outter loops are CO/HCN maxes, for final paper version, these are just one value, defined above
 for CO_max in CO_maxes:
     for HCN_max in HCN_maxes:
         # create description name for output file
@@ -186,7 +189,7 @@ for CO_max in CO_maxes:
         # identify no smoke and smoke inds
         if use_CH3CN:
             smoke_inds1 = np.where(np.logical_and(TOGA_mrg['CO_comb']>CO_max,TOGA_mrg[' HCN_TOGA']>HCN_max))[0]
-            not_smoke_inds1 = np.where(np.logical_and(TOGA_mrg['CO_comb']<CO_max,TOGA_mrg[' HCN_TOGA']<HCN_max))[0]
+            not_smoke_inds1 = np.where(np.logical_and(TOGA_mrg['CO_comb']<=CO_max,TOGA_mrg[' HCN_TOGA']<=HCN_max))[0]
             rmv_smk_inds = np.where(TOGA_mrg[' CH3CN_TOGA'].iloc[smoke_inds1] <= CH3CN_max)[0]
             rmv_nsmk_inds = np.where(TOGA_mrg[' CH3CN_TOGA'].iloc[not_smoke_inds1]>CH3CN_max)
             smoke_inds = np.delete(smoke_inds1,rmv_smk_inds)

@@ -12,13 +12,13 @@ V2 created Thu Jan 7 2020
 #%% user inputs
 # this list is the full list of HAPs measured during WE-CAN
 # file name for table of VOC names
-HAPs_RFs_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/health risk tables/HAPs_EFs_RFs_forcode_final_final_WadeUpdate.csv'
+HAPs_RFs_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/health risk tables/HAPs_EFs_RFs_forcode_final_final_WadeUpdate_onlyREL4acute.csv'
 
 # specify which TOGA merge version to use
 # for paper
-mrg_name = 'TOGA_mrg_w_age__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate85.275_w200_CH3CN.csv'
-voc_bk_name = 'VOC_bks__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate85.275_w200_CH3CN.csv'
-out_fn = 'VOC2PM_ratios_4paper_NASAmrg_R1TOGAupdate.csv'
+mrg_name = 'TOGA_mrg_w_age__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate_95pct_50pctall_85.275_w200_CH3CN.csv'
+voc_bk_name = 'VOC_bks__NASA_R2_anth_tracers_PTR16fix_R1TOGAupdate_95pct_50pctall_85.275_w200_CH3CN.csv'
+out_fn = 'VOC2PM_ratios_4paper_NASAmrg_R1TOGAupdate_nonpar_stats.csv'
 
 # detection limit file name
 TOGA_LLOD_fn =  '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/WECAN_datafiles/TOGA_data_05.21.20/TOGA_LLOD_R1.csv'
@@ -40,6 +40,11 @@ import pandas as pd
 import numpy as np
 import plotly.io as pio
 pio.renderers.default = "chrome"
+
+#%% parameters and constants
+P_std = 101325 #Pa
+T_std = 273.15 #K
+R = 8.314 #j/molK
 
 #%% load data
 # TOGA merge
@@ -65,14 +70,12 @@ VOC_PM_ratio = VOC_PM_ratio_1.set_index('variable name')
 VOC_PM_ratio['VOC name'] = HAPs_RFs['Name']
 VOC_PM_ratio['Chemical Formula'] = HAPs_RFs['Chemical Formula']
     
-
 #%% create VOC_elv dataframe by subtracting off background
 VOC_smoke_elv = pd.DataFrame(data={'  STARTTIME' : TOGA_mrg['  STARTTIME'],
                                    ' STOPTIME': TOGA_mrg[' STOPTIME'],
                                    ' FLIGHT':TOGA_mrg[' FLIGHT']})
-# add PM and CO
+# add PM
 VOC_smoke_elv['PM_elv'] = TOGA_mrg['PM1_ams_sp2'].values - VOC_bks['PM1_ams_sp2'].values
-VOC_smoke_elv['CO_comb_elv'] = TOGA_mrg['CO_comb'].values - VOC_bks['CO_comb'].values
 
 for VOC_name in healthVOCs:
     VOC_smoke_elv[' '+VOC_name + '_elv'] = TOGA_mrg[' '+VOC_name].values - VOC_bks[VOC_name].values
@@ -90,16 +93,40 @@ VOC_smoke_elv_nourban = VOC_smoke_elv.drop(index=anth_inds)
 VOC_smoke_elv_nourban.reset_index(inplace=True,drop=True)
 TOGA_mrg_nourban = TOGA_mrg.drop(index=anth_inds)
 TOGA_mrg_nourban.reset_index(inplace=True,drop=True)
+
+#%% convert to ugm-3
+TOGA_mrg_mc = TOGA_mrg_nourban[['  STARTTIME',' UTC_mid',' FLIGHT',' LATITUDE',' LONGITUDE','chem_smoke_age',
+                        'datetime_start','datetime_stop']].copy(deep=True)
+VOC_smoke_elv_nourban_mc = pd.DataFrame(data={'  STARTTIME' : VOC_smoke_elv_nourban['  STARTTIME'],
+                                   ' STOPTIME': VOC_smoke_elv_nourban[' STOPTIME'],
+                                   ' FLIGHT':VOC_smoke_elv_nourban[' FLIGHT']})
+# add PM
+VOC_smoke_elv_nourban_mc['PM_elv'] = VOC_smoke_elv_nourban['PM_elv']
+
+for VOC in healthVOCs:
+    TOGA_mrg_mc[' '+VOC] = TOGA_mrg_nourban[' '+VOC]*HAPs_RFs.loc[VOC]['molecular weight']*10**-6.0*((P_std)/(T_std*R))
+    VOC_smoke_elv_nourban_mc[' '+VOC+'_elv'] = VOC_smoke_elv_nourban[' '+VOC+'_elv']*HAPs_RFs.loc[VOC]['molecular weight']*10**-6.0*((P_std)/(T_std*R))
+    if VOC[-3:]=='PTR':
+        TOGA_LLOD[VOC] = 200.0*HAPs_RFs.loc[VOC]['molecular weight']*10**-6.0*((P_std)/(T_std*R))
+    else:
+        TOGA_LLOD[VOC] = TOGA_LLOD[VOC]*HAPs_RFs.loc[VOC]['molecular weight']*10**-6.0*((P_std)/(T_std*R))
+
+# age chem age
+VOC_smoke_elv_nourban_mc['chem_smoke_age'] = VOC_smoke_elv_nourban['chem_smoke_age'].copy(deep=True)
+
 #%% group smoke elevated concentrations by age
-smoke_elv_age_groups = VOC_smoke_elv_nourban.groupby(by='chem_smoke_age')
-TOGA_mrg_agegroups = TOGA_mrg_nourban.groupby(by='chem_smoke_age')
+smoke_elv_age_groups = VOC_smoke_elv_nourban_mc.groupby(by='chem_smoke_age')
+TOGA_mrg_agegroups = TOGA_mrg_mc.groupby(by='chem_smoke_age')
 #%% stats for smoke
 ai = 1
 for age in ['young', 'medium', 'old', 'extra old']:
-    VOC_PM_ratio[age+' VOC v PM R2'] = -999.
-    VOC_PM_ratio[age+' VOC PM1 ratio, median [ppt/ugm-3]'] = -999.
-    VOC_PM_ratio[age+' VOC PM1 ratio, mean [ppt/ugm-3]'] = -999.
-    VOC_PM_ratio[age+' VOC PM1 ratio, standard deviation'] = -999.
+    #VOC_PM_ratio[age+' VOC v PM R2'] = -999.
+    VOC_PM_ratio[age+' VOC v PM Spearman correlation'] = -999.
+    VOC_PM_ratio[age+' VOC PM1 ratio, median [ugm-3 STP/ugm-3 STP]'] = -999.
+    #VOC_PM_ratio[age+' VOC PM1 ratio, mean [ppt/ugm-3]'] = -999.
+    #VOC_PM_ratio[age+' VOC PM1 ratio, standard deviation'] = -999.
+    VOC_PM_ratio[age+' VOC PM1 ratio, 25th pct [ugm-3 STP/ugm-3 STP]'] = -999.
+    VOC_PM_ratio[age+' VOC PM1 ratio, 75th pct [ugm-3 STP/ugm-3 STP]'] = -999.
     VOC_PM_ratio[age+' VOC PM1 ratio, n obs'] = -999.
     VOC_PM_ratio[age+' VOC PM1 ratio, % obs above DL'] = -999.
     
@@ -109,27 +136,27 @@ for age in ['young', 'medium', 'old', 'extra old']:
     zeroPM = np.where(VOC_smoke_elv_agegroup['PM_elv']==0)
     nanPM = np.where(np.isnan(VOC_smoke_elv_agegroup['PM_elv']))
     rmv_inds = np.hstack([zeroPM,nanPM])
-    i = 0
+
+    i = 0    
     for voc in VOC_PM_ratio.index:
-        # R2
+        # R2/ Spearman correlation
         data = VOC_smoke_elv_agegroup[[' '+voc + '_elv','PM_elv']]
-        VOC_PM_ratio[age+' VOC v PM R2'].iloc[i] = round(data.corr('pearson').values[0,1]**2.,2)
+        #VOC_PM_ratio[age+' VOC v PM R2'].iloc[i] = round(data.corr('pearson').values[0,1]**2.,2)
+        VOC_PM_ratio[age+' VOC v PM Spearman correlation'].iloc[i] = round(data.corr('spearman').values[0,1],2)
         # median, mean, standard deviation
         VOC_PM_weighted_agegroup[' '+voc+'_elv'] = VOC_smoke_elv_agegroup[' '+voc + '_elv'].values/VOC_smoke_elv_agegroup['PM_elv'].values
         VOC_PM_weighted_agegroup[' '+voc+'_elv'].iloc[rmv_inds] = np.nan
-        # for calculation above DL
+        # median, 25th and 75th pct
         TOGA_mrg_agegroup[' '+voc].iloc[rmv_inds] = np.nan
-        VOC_PM_ratio[age+' VOC PM1 ratio, median [ppt/ugm-3]'].iloc[i] = np.round(np.nanmedian(VOC_PM_weighted_agegroup[' '+voc+'_elv']),2)
-        VOC_PM_ratio[age+' VOC PM1 ratio, mean [ppt/ugm-3]'].iloc[i] = np.round(np.nanmean(VOC_PM_weighted_agegroup[' '+voc+'_elv']),2)
-        VOC_PM_ratio[age+' VOC PM1 ratio, standard deviation'].iloc[i] = np.round(np.nanstd(VOC_PM_weighted_agegroup[' '+voc+'_elv'],ddof=1),2)
-        # n
+        VOC_PM_ratio[age+' VOC PM1 ratio, median [ugm-3 STP/ugm-3 STP]'].iloc[i] = np.round(np.nanmedian(VOC_PM_weighted_agegroup[' '+voc+'_elv']),4)
+        VOC_PM_ratio[age+' VOC PM1 ratio, 25th pct [ugm-3 STP/ugm-3 STP]'].iloc[i] = np.round(np.nanpercentile(VOC_PM_weighted_agegroup[' '+voc+'_elv'],25),4)
+        VOC_PM_ratio[age+' VOC PM1 ratio, 75th pct [ugm-3 STP/ugm-3 STP]'].iloc[i] = np.round(np.nanpercentile(VOC_PM_weighted_agegroup[' '+voc+'_elv'],75),4)
+        #VOC_PM_ratio[age+' VOC PM1 ratio, mean [ppt/ugm-3]'].iloc[i] = np.round(np.nanmean(VOC_PM_weighted_agegroup[' '+voc+'_elv']),2)
+        #VOC_PM_ratio[age+' VOC PM1 ratio, standard deviation'].iloc[i] = np.round(np.nanstd(VOC_PM_weighted_agegroup[' '+voc+'_elv'],ddof=1),2)
+        # nobs and % of DL
         nobs = len(np.where(np.isfinite(VOC_PM_weighted_agegroup[' '+voc+'_elv']))[0])
         VOC_PM_ratio[age+' VOC PM1 ratio, n obs'].iloc[i] = nobs
-        if voc[-4:] == 'TOGA':
-            nobs_above_DL =  len(np.where(TOGA_mrg_agegroup[' '+voc]>TOGA_LLOD[voc].values[0])[0])
-        else:
-            nobs_above_DL =  len(np.where(TOGA_mrg_agegroup[' '+voc]>200.0)[0])
-    
+        nobs_above_DL =  len(np.where(TOGA_mrg_agegroup[' '+voc]>TOGA_LLOD[voc].values[0])[0])    
         VOC_PM_ratio[age+' VOC PM1 ratio, % obs above DL'].iloc[i] = 100.0*(np.float(nobs_above_DL)/nobs)
         print nobs_above_DL
         i += 1

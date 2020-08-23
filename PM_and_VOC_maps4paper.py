@@ -23,14 +23,16 @@ states_plot = ['Colorado','California','Idaho','Montana','Wyoming','Washington',
                'Oregon','Nevada','Utah']
 
 
-# kriging data path, HMS files are also here
-kdata_path = '/Users/kodell/Local Google Drive /CSU/Research/NASA_fires/kriging data/PM_4HAPs_paper/'
+# kriging data and HMS data paths
+kdata_path = '/Users/kodell/Local Google Drive /CSU/Research/NASA_fires/kriging data/for_repo/'
+HMS_path = '/Users/kodell/Local Google Drive /CSU/Research/NASA_fires/kriging data/'
 
 # ratio file name
-ratio_data_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/health risk tables/VOC2PM_ratios_4paper_NASAmrg_R1TOGAupdate.csv'
+# these ratios are now in ug m-3 HAP/ ug m-3 PM
+ratio_data_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/health risk tables/VOC2PM_ratios_4paper_NASAmrg_R1TOGAupdate_nonpar_stats.csv'
 
 # file path for health risk factors and health VOC names
-HAPs_RFs_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/health risk tables/HAPs_EFs_RFs_forcode_final_final_WadeUpdate.csv'
+HAPs_RFs_fn = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/health risk tables/HAPs_EFs_RFs_forcode_final_final_WadeUpdate_onlyREL4acute.csv'
 HAPs_RFs_raw = pd.read_csv(HAPs_RFs_fn,header=0,skiprows=[1,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,
                                                           49,50,51,52])
 HAPs_RFs = HAPs_RFs_raw.set_index('TOGA name')
@@ -38,7 +40,7 @@ HAPs_RFs = HAPs_RFs_raw.set_index('TOGA name')
 healthVOCs = HAPs_RFs.index
 
 output_figure_path = '/Users/kodell/Local Google Drive /CSU/Research/NSF/WECAN PM_VOC health/paper_figures/final/'
-fig_desc = 'PTR16fix_R1TOGAupdate'
+fig_desc = 'PTR16fix_R1TOGAupdate_reviewupdate'
 
 # sensitivity tests
 # leave in negative enhancements
@@ -58,8 +60,11 @@ fig_desc = 'PTR16fix_R1TOGAupdate'
 #%% user-defined functions
 def make_map(states2plot):
     # draw base map
-    m = Basemap(llcrnrlon=-125,llcrnrlat=32,urcrnrlon=-102,urcrnrlat=50,
-        projection='merc',lat_1=33,lat_2=45,lon_0=-95,resolution='l')
+    # ideally, we'd like to stick with lcc proj with rsphere=6371200. for 
+    # this grid from WRF-Chem, but on this scale the maps look the same when transformed, and
+    # this is a map of the full US for the paper, not comparing data or anything
+    m = Basemap(llcrnrlon=-125.,llcrnrlat=30.,urcrnrlon=-101.,urcrnrlat=52.,
+        projection='merc',resolution='l')
     # draw states
     m.readshapefile('cb_2018_us_state_20m/cb_2018_us_state_20m','states',
                     drawbounds=False,linewidth=0.45,color='gray')
@@ -89,29 +94,31 @@ anavg_smokePM_allyears[:] = -999
 smokePM_daily_allyears = np.empty([1,366,189,309])
 smokePM_daily_allyears[:] = -999
 
-# when calculating smoke PM, check if it makes a significant difference
-# to remove negative nosmoke background values. They are small negative 
-# numbers < 1 micron, but could make a difference on the average and
-# make the smoke artifically high
-
 for year in years:
     # load kriging data
-    krig_nc_fid = Dataset(kdata_path + 'krigedPM25_' + str(year) + '.nc')
+    krig_nc_fid = Dataset(kdata_path + 'krigedPM25_' + str(year) + '_4repo.nc')
     PM25 = krig_nc_fid['PM25'][:]
-    print PM25.max()
-    nosmokePM25 = krig_nc_fid['Background PM25'][:]
+    nosmokePM25 = krig_nc_fid['nosmoke background PM25'][:]
     glat = krig_nc_fid['lat'][:]
     glon = krig_nc_fid['lon'][:]
+    print PM25.max()
     krig_nc_fid.close()
     
     # load HMS to multiply by smoke PM so smoke PM is zero on non-smoke days
-    HMS_fid = Dataset(kdata_path + '/HMS/hms_smoke_'+str(year)+'.nc')
+    HMS_fid = Dataset(HMS_path + 'HMS/hms_smoke_'+str(year)+'.nc')
     HMS_smoke = HMS_fid['HMS_Smoke'][:]
     HMS_fid.close()
     
-    # remove mask (mask=False for all arrays so can just take values)
-    PM25_vals = PM25.data    
-    nosmokePM25_vals = nosmokePM25.data
+    # remove mask for kriging
+    PM25_valsm = PM25.data
+    PM25_mask = PM25.mask
+    PM25_vals = np.where(PM25_mask,np.nan,PM25_valsm)
+
+    nosmokePM25_valsm = nosmokePM25.data
+    nosmokePM25_mask = nosmokePM25.mask
+    nosmokePM25_vals = np.where(nosmokePM25_mask,np.nan,nosmokePM25_valsm)
+
+    # remove mask for HMS(mask=False for HMS so can just take values)    
     HMS_smoke_vals = HMS_smoke.data
     
     smokePM = HMS_smoke_vals*np.array([PM25_vals - nosmokePM25_vals])    
@@ -152,6 +159,8 @@ PM2018 = anavg_smokePM_allyears[-1,:,:]
 #%% Convert units of chronic cancer risk ratios and noncancer hazard values to ppt
 # Convert units of chronic cancer risk ratios from ug/m3 -> ppt
 # conversion factor converts mw to g/molec and will convert 1/ug/m3 to ppt
+# reviewer update: don't have to do this anymore because ratios are in ug/m3
+'''
 conv_factor = ((P_std)/(T_std*R))*(1.*10.**-12.)*(1.*10.**6)*(1.*10.**6) #second 10**6 so number is ppl/mil risk
 
 crf_ppt = HAPs_RFs['chronic cancer risk factor']*HAPs_RFs['molecular weight']*conv_factor   
@@ -162,6 +171,11 @@ HAPs_RFs['arl_ppt'] = arl_ppt
 
 crl_ppt = HAPs_RFs['chronic noncancer risk factor']*(1./(1000.*HAPs_RFs['molecular weight']))*(R*T_std/P_std)*(1.*10.**12)
 HAPs_RFs['crl_ppt'] = crl_ppt
+'''
+
+HAPs_RFs['crf_mc'] = HAPs_RFs['chronic cancer risk factor']*(1.*10.**6)# 10**6 so number is ppl/mil risk
+HAPs_RFs['arl_mc'] = HAPs_RFs['acute risk factor']*1000.0 # convert to ug/m3
+HAPs_RFs['crl_mc'] = HAPs_RFs['chronic noncancer risk factor']*1000.0 # convert to ug/m3    
 
   
 #%% Prep data for plotting on maps
@@ -172,7 +186,7 @@ HAPs_RFs['crl_ppt'] = crl_ppt
 # skip first row and column of data since there are no points outside of domain to average with
 
 # switch these to lower left corner lat/lon (glat/glon are centers)
-# kind of complicated with kriging grid
+# kind of complicated with kriging grid, below isn't perfect but it works. 
 dx = 0.5*(glon[1:,1:]-glon[:-1,:-1])
 dy = 0.5*(glat[1:,1:]-glat[:-1,:-1])
 
@@ -185,7 +199,7 @@ fdy = np.hstack([hfdy[:,[0]],hfdy])
 pglon = glon-fdx
 pglat = glat-fdy
 
-# mask data outside of specified states (this is extrapolation with kriging)
+# mask data outside of specified states 
 full_mask = np.zeros(glon.shape)
 US_file = shapefile.Reader('cb_2018_us_state_20m/cb_2018_us_state_20m')
 US_shp = US_file.shape(0)
@@ -217,41 +231,33 @@ chronicHAPs_risk_2018 = np.zeros(US_PM2018.shape)
 cancerHAPs_risk_2018 = np.zeros(US_PM2018.shape)
 
 for VOC_name in healthVOCs:
-    VOC2PMratio = ratios['medium VOC PM1 ratio, median [ppt/ugm-3]'].loc[VOC_name]
+    VOC2PMratio = ratios['medium VOC PM1 ratio, median [ugm-3 STP/ugm-3 STP]'].loc[VOC_name]
     VOC_decade = VOC2PMratio*US_decadal_avg_smokePM
     VOC_2018 = VOC2PMratio*US_PM2018
 
-    if np.isfinite(HAPs_RFs['crl_ppt'][VOC_name]):
-        VOC_risk_decade = VOC_decade/HAPs_RFs['crl_ppt'][VOC_name]
+    if np.isfinite(HAPs_RFs['crl_mc'][VOC_name]):
+        VOC_risk_decade = VOC_decade/HAPs_RFs['crl_mc'][VOC_name]
         chronicHAPs_risk_decade += VOC_risk_decade
 
-        VOC_risk_2018 = VOC_2018/HAPs_RFs['crl_ppt'][VOC_name]
+        VOC_risk_2018 = VOC_2018/HAPs_RFs['crl_mc'][VOC_name]
         chronicHAPs_risk_2018 += VOC_risk_2018
 
 
-    if np.isfinite(HAPs_RFs['crf_ppt'][VOC_name]):
-        VOC_cancer_risk_decade = VOC_decade*HAPs_RFs['crf_ppt'][VOC_name]
+    if np.isfinite(HAPs_RFs['crf_mc'][VOC_name]):
+        VOC_cancer_risk_decade = VOC_decade*HAPs_RFs['crf_mc'][VOC_name]
         cancerHAPs_risk_decade += VOC_cancer_risk_decade    
 
-        VOC_risk_2018 = VOC_2018*HAPs_RFs['crf_ppt'][VOC_name]
+        VOC_risk_2018 = VOC_2018*HAPs_RFs['crf_mc'][VOC_name]
         cancerHAPs_risk_2018 += VOC_risk_2018
 
 #%% figure 2 or 3: full time period PM
-#Hack to fix missing PROJ4 env var
-import os
-import conda
-
-conda_file_dir = conda.__file__
-conda_dir = conda_file_dir.split('lib')[0]
-proj_lib = os.path.join(os.path.join(conda_dir, 'share'), 'proj')
-os.environ["PROJ_LIB"] = proj_lib
-
 #subplot 1: average 2006-2018 annual PM from fires
 pl.figure()
 m = make_map(states_plot)
 # plot data
-cs = m.pcolormesh(pglon,pglat, US_decadal_avg_smokePM,
-                  latlon=True,vmin=0,vmax=2,cmap='YlOrRd')
+x,y = m(pglon,pglat)
+cs = m.pcolormesh(x,y, US_decadal_avg_smokePM,
+                  vmin=0,vmax=2,cmap='YlOrRd')
 # add colorbar
 m.colorbar(cs,"bottom", size="5%", pad='2%',extend='max',label = r'PM$_{2.5}$ [$\mu$g m$^{-3}$]')
 pl.title('2006-2018 Average Smoke PM$_{2.5}$ ')
@@ -272,15 +278,16 @@ normA = BoundaryNorm([0,0.025, 0.05, 0.075, 0.1,0.2,0.3,0.4,0.5,1], ncolors=cmap
 
 cmapB = plb.cm.get_cmap('BuPu',8)
 cmapB.set_under('white')
-normB = BoundaryNorm([0,1,2,3,4,5,10,20], ncolors=cmapB.N)
+normB = BoundaryNorm([0,1,2,3,4,5,10,25], ncolors=cmapB.N)
 
-# make figure
+# make figures
 fig = pl.figure()
 # a) decade PM
 ax = fig.add_subplot(231)
 ax.text(-0.15, 0.93, '(a)',transform=ax.transAxes,fontsize=10,va='top')
 m = make_map(states_plot)
-cs = m.pcolormesh(pglon,pglat, US_decadal_avg_smokePM,latlon=True,
+x,y = m(pglon,pglat)
+cs = m.pcolormesh(x,y, US_decadal_avg_smokePM,
                   cmap=cmapPM, norm=normPM)
 
 # b) decade hazard index
@@ -288,21 +295,21 @@ ax = fig.add_subplot(232)
 ax.text(-0.15, 0.93, '(b)',transform=ax.transAxes,fontsize=10,va='top')
 ax.set_title('\n2006-2018 average exposure')
 m = make_map(states_plot)
-cs = m.pcolormesh(pglon,pglat, chronicHAPs_risk_decade,latlon=True,
+cs = m.pcolormesh(x,y, chronicHAPs_risk_decade,
                   vmax=1,cmap=cmapA, norm=normA)
 
 # c) decade cancer risk
 ax = fig.add_subplot(233)
 ax.text(-0.15, 0.93, '(c)',transform=ax.transAxes,fontsize=10,va='top')
 m = make_map(states_plot)
-cs = m.pcolormesh(pglon,pglat, cancerHAPs_risk_decade,latlon=True,
+cs = m.pcolormesh(x,y, cancerHAPs_risk_decade,
                   vmax=25,cmap=cmapB,norm=normB)
 
 # d) 2018 PM
 ax = fig.add_subplot(234)
 ax.text(-0.15, 0.93, '(d)',transform=ax.transAxes,fontsize=10,va='top')
 m = make_map(states_plot)
-cs = m.pcolormesh(pglon,pglat, US_PM2018,latlon=True,
+cs = m.pcolormesh(x,y, US_PM2018,
                   cmap=cmapPM,norm=normPM)
 m.colorbar(cs,"bottom", size="5%", pad='2%',extend='max',
            label = r'PM$_{2.5}$ [$\mu$g m$^{-3}$]')
@@ -312,7 +319,7 @@ ax = fig.add_subplot(235)
 ax.text(-0.15, 0.93, '(e)',transform=ax.transAxes,fontsize=10,va='top')
 ax.set_title('2018 as representative exposure')
 m = make_map(states_plot)
-cs = m.pcolormesh(pglon,pglat, chronicHAPs_risk_2018,latlon=True,
+cs = m.pcolormesh(x,y, chronicHAPs_risk_2018,
                   cmap=cmapA,norm=normA)
 colorbar = m.colorbar(cs,"bottom", size="5%", pad='2%',extend='max',
                       label = 'hazard index')
@@ -323,10 +330,10 @@ colorbar.ax.set_xticklabels(['0','0.05','0.1','0.3','0.5','1'])
 ax = fig.add_subplot(236)
 ax.text(-0.15, 0.93, '(f)',transform=ax.transAxes,fontsize=10,va='top')
 m = make_map(states_plot)
-cs = m.pcolormesh(pglon,pglat, cancerHAPs_risk_2018,latlon=True,
+cs = m.pcolormesh(x,y, cancerHAPs_risk_2018,
                   vmax=25,cmap=cmapB,norm=normB)
 m.colorbar(cs,"bottom", size="5%", pad='2%', 
-           label='cancer risk per 10$^6$ exposed')
+           label='excess cancer risk\nper 10$^6$ population')
 # adjust figure white space and save
 pl.subplots_adjust(top=0.969,bottom=0.1,left=0.05,right=0.956,
                    hspace=0.0,wspace=0.4)
