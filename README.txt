@@ -6,7 +6,7 @@
 # This git repository contains python v2.7 scripts used to create a TOGA merge, estimate chemical 
 # smoke age, anthropogenic influence, and HAP to VOC ratios in the WE-CAN campaign.
 
-# The paper resulting from this analysis is currently in prep for ES&T. 
+# The paper resulting from this analysis is published in ES&T; O'Dell et al. (2020); doi:10.1021/acs.est.0c04497
 
 # Details and data from the WE-CAN campaign are publically available at the following link:
 # https://www.eol.ucar.edu/field_projects/we-can
